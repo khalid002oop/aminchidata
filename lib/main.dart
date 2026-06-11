@@ -4,6 +4,7 @@ import 'core/constants/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/storage.dart';
 import 'routes/app_pages.dart';
+import 'presentation/controllers/auth_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,9 @@ class AminchiDataApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       getPages: appPages,
+      initialBinding: BindingsBuilder(() {
+        Get.put(AuthController(), permanent: true);
+      }),
       home: const _Splash(),
     );
   }
