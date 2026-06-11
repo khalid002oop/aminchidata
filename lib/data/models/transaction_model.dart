@@ -39,7 +39,12 @@ class TransactionModel {
   String? get network         => extra['network'] as String?;
   String? get planName        => extra['plan_name'] as String?;
   String? get smartCardNumber => extra['smart_card_number'] as String?;
+  String? get cable           => extra['cable'] as String?;
   String? get meterNumber     => extra['meter_number'] as String?;
+  String? get disco           => extra['disco'] as String?;
+  String? get meterType       => extra['meter_type'] as String?;
+  String? get exam            => extra['exam'] as String?;
+  int?    get quantity        => extra['quantity'] as int?;
   String? get token           => extra['token'] as String?;
   List<String>? get pins {
     final raw = extra['pins'];

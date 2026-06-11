@@ -46,8 +46,22 @@ class TransactionController extends GetxController {
   Future<void> loadReceipt(String tid) async {
     receipt.value   = null;
     isLoading.value = true;
-    final res = await ApiClient.get(ApiConstants.receipt, query: {'tid': tid});
+    // Retry up to 3 times with a short gap to handle commit timing on slow connections
+    for (int attempt = 0; attempt < 3; attempt++) {
+      if (attempt > 0) await Future.delayed(const Duration(seconds: 2));
+      final res = await ApiClient.get(ApiConstants.receipt, query: {'tid': tid});
+      if (res.success && res.data != null) {
+        receipt.value   = TransactionModel.fromJson(res.data['transaction'] ?? res.data);
+        isLoading.value = false;
+        return;
+      }
+    }
     isLoading.value = false;
+  }
+
+  // Silent refresh used by the receipt screen polling loop
+  Future<void> refreshReceipt(String tid) async {
+    final res = await ApiClient.get(ApiConstants.receipt, query: {'tid': tid});
     if (res.success && res.data != null) {
       receipt.value = TransactionModel.fromJson(res.data['transaction'] ?? res.data);
     }
