@@ -403,7 +403,7 @@ class _HistoryTab extends StatelessWidget {
               }
               return RefreshIndicator(
                 color: AppColors.primary,
-                onRefresh: () => tx.loadTransactions(refresh: true),
+                onRefresh: () => tx.loadHistory(reset: true),
                 child: ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: tx.transactions.length,
