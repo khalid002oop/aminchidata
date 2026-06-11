@@ -24,18 +24,17 @@ class AuthController extends GetxController {
     final data = res.data as Map<String, dynamic>;
     _pendingToken = data['token'];
     _pendingEmail = email;
-    await Storage.saveToken(_pendingToken!, scope: data['next_step'] ?? '');
+    await Storage.saveToken(_pendingToken!, scope: data['next_step'] ?? 'full');
 
     switch (data['next_step']) {
-      case 'verify_otp':
-        Get.toNamed(AppRoutes.otp, arguments: {'email': _pendingEmail, 'token': _pendingToken});
-        break;
       case 'setup_pin':
         Get.toNamed(AppRoutes.setupPin, arguments: {'token': _pendingToken});
         break;
       case 'verify_pin':
         Get.toNamed(AppRoutes.verifyPin, arguments: {'token': _pendingToken, 'username': data['username']});
         break;
+      default:
+        Get.offAllNamed(AppRoutes.home);
     }
   }
 
@@ -51,34 +50,16 @@ class AuthController extends GetxController {
     final data = res.data as Map<String, dynamic>;
     _pendingToken = data['token'];
     _pendingEmail = email;
-    await Storage.saveToken(_pendingToken!, scope: 'otp_verify');
-    Get.toNamed(AppRoutes.otp, arguments: {'email': email, 'token': _pendingToken});
-  }
+    final nextStep = data['next_step'] ?? 'setup_pin';
+    await Storage.saveToken(_pendingToken!, scope: nextStep);
 
-  Future<void> verifyOtp(String otp, {String? token, String? email}) async {
-    final t = token ?? _pendingToken;
-    if (t == null) { _showError('Session expired. Please log in again.'); Get.offAllNamed(AppRoutes.login); return; }
-    _setLoading(true);
-    final res = await ApiClient.post(ApiConstants.verifyOtp, {'otp': otp}, token: t);
-    _setLoading(false);
-    if (!res.success) { _showError(res.message); return; }
-
-    final data = res.data as Map<String, dynamic>;
-    _pendingToken = data['token'];
-    await Storage.saveToken(_pendingToken!, scope: data['next_step'] ?? '');
-
-    if (data['next_step'] == 'setup_pin') {
-      Get.offNamed(AppRoutes.setupPin, arguments: {'token': _pendingToken});
-    } else {
-      Get.offNamed(AppRoutes.verifyPin, arguments: {'token': _pendingToken});
+    switch (nextStep) {
+      case 'verify_pin':
+        Get.offAllNamed(AppRoutes.verifyPin, arguments: {'token': _pendingToken, 'username': data['username']});
+        break;
+      default:
+        Get.offAllNamed(AppRoutes.setupPin, arguments: {'token': _pendingToken});
     }
-  }
-
-  Future<void> resendOtp(String email) async {
-    _setLoading(true);
-    final res = await ApiClient.post(ApiConstants.resendOtp, {'email': email}, auth: false);
-    _setLoading(false);
-    if (res.success) { _showSuccess('OTP sent! Check your email.'); } else { _showError(res.message); }
   }
 
   Future<void> setupPin(String pin, {String? token}) async {

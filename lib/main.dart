@@ -59,17 +59,19 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
     }
 
     switch (scope) {
-      case 'otp_verify':
-        Get.offAllNamed(AppRoutes.otp);
-        break;
+      case 'setup_pin':
       case 'pin_setup':
         Get.offAllNamed(AppRoutes.setupPin);
         break;
+      case 'verify_pin':
       case 'pin_verify':
         Get.offAllNamed(AppRoutes.verifyPin);
         break;
-      default:
+      case 'full':
         Get.offAllNamed(AppRoutes.home);
+        break;
+      default:
+        Get.offAllNamed(AppRoutes.login);
     }
   }
 
