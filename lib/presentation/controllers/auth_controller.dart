@@ -1,19 +1,22 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/network/api_client.dart';
 import '../../core/constants/api_constants.dart';
 import '../../core/utils/storage.dart';
+import '../../core/utils/biometric_service.dart';
 import '../../routes/app_pages.dart';
 
 class AuthController extends GetxController {
-  final isLoading = false.obs;
+  final isLoading      = false.obs;
+  final biometricReady = false.obs;
   String? _pendingToken;
-  String? _pendingEmail;
 
   void _setLoading(bool v) => isLoading.value = v;
-
-  void _showError(String msg) => Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM, duration: const Duration(seconds: 4));
-  void _showSuccess(String msg) => Get.snackbar('Success', msg, snackPosition: SnackPosition.BOTTOM, duration: const Duration(seconds: 3));
+  void _showError(String msg) =>
+      Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM, duration: const Duration(seconds: 4));
+  void _showSuccess(String msg) =>
+      Get.snackbar('Success', msg, snackPosition: SnackPosition.BOTTOM, duration: const Duration(seconds: 3));
 
   Future<void> login(String email, String password) async {
     _setLoading(true);
@@ -23,8 +26,8 @@ class AuthController extends GetxController {
 
     final data = res.data as Map<String, dynamic>;
     _pendingToken = data['token'];
-    _pendingEmail = email;
     await Storage.saveToken(_pendingToken!, scope: data['next_step'] ?? 'full');
+    await Storage.saveEmail(email);
 
     switch (data['next_step']) {
       case 'setup_pin':
@@ -49,9 +52,9 @@ class AuthController extends GetxController {
 
     final data = res.data as Map<String, dynamic>;
     _pendingToken = data['token'];
-    _pendingEmail = email;
     final nextStep = data['next_step'] ?? 'setup_pin';
     await Storage.saveToken(_pendingToken!, scope: nextStep);
+    await Storage.saveEmail(email);
 
     switch (nextStep) {
       case 'verify_pin':
@@ -93,7 +96,7 @@ class AuthController extends GetxController {
     final res = await ApiClient.post(ApiConstants.setupPin, {'pin': pin}, token: t);
     _setLoading(false);
     if (!res.success) { _showError(res.message); return; }
-    await _completeLogin(res.data as Map<String, dynamic>);
+    await _completeLogin(res.data as Map<String, dynamic>, pin: pin);
   }
 
   Future<void> verifyPin(String pin, {String? token}) async {
@@ -103,15 +106,72 @@ class AuthController extends GetxController {
     final res = await ApiClient.post(ApiConstants.verifyPin, {'pin': pin}, token: t);
     _setLoading(false);
     if (!res.success) { _showError(res.message); return; }
-    await _completeLogin(res.data as Map<String, dynamic>);
+    await _completeLogin(res.data as Map<String, dynamic>, pin: pin);
   }
 
-  Future<void> _completeLogin(Map<String, dynamic> data) async {
+  Future<void> _completeLogin(Map<String, dynamic> data, {String? pin}) async {
     await Storage.saveToken(data['token'], scope: 'full');
-    if (data['user'] != null) {
-      await Storage.saveUserData(jsonEncode(data['user']));
+    if (data['user'] != null) await Storage.saveUserData(jsonEncode(data['user']));
+
+    // If biometric available + not yet set up, save PIN and offer to enable
+    if (pin != null) {
+      final supported = await BiometricService.isSupported();
+      final enrolled  = await BiometricService.hasEnrolled();
+      final alreadyEnabled = await Storage.isBiometricEnabled();
+      if (supported && enrolled && !alreadyEnabled) {
+        await Storage.saveSecurePin(pin);
+        await _offerBiometric();
+      } else if (alreadyEnabled) {
+        // Update the stored PIN whenever user re-verifies
+        await Storage.saveSecurePin(pin);
+      }
     }
+
     Get.offAllNamed(AppRoutes.home);
+  }
+
+  Future<void> _offerBiometric() async {
+    final enable = await Get.dialog<bool>(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(children: [
+          Text('🔒 '), Text('Enable Fingerprint Login?', style: TextStyle(fontSize: 16)),
+        ]),
+        content: const Text(
+          'Use your fingerprint to log in and authorize transactions faster — no PIN typing needed.',
+          style: TextStyle(fontSize: 13, color: Colors.grey),
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(result: false), child: const Text('Not Now')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF2ecc71), foregroundColor: Colors.white),
+            onPressed: () => Get.back(result: true),
+            child: const Text('Enable'),
+          ),
+        ],
+      ),
+    );
+    if (enable == true) {
+      await Storage.setBiometricEnabled(true);
+      biometricReady.value = true;
+    }
+  }
+
+  // Called from settings/profile to toggle fingerprint
+  Future<void> toggleBiometric(bool enable) async {
+    if (enable) {
+      final ok = await BiometricService.authenticate(reason: 'Confirm your identity to enable fingerprint');
+      if (ok) {
+        await Storage.setBiometricEnabled(true);
+        biometricReady.value = true;
+        _showSuccess('Fingerprint login enabled.');
+      }
+    } else {
+      await Storage.setBiometricEnabled(false);
+      await Storage.clearSecurePin();
+      biometricReady.value = false;
+      _showSuccess('Fingerprint login disabled.');
+    }
   }
 
   Future<void> forgotPassword(String email) async {

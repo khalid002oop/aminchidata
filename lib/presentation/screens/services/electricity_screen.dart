@@ -5,7 +5,7 @@ import '../../../core/utils/validators.dart';
 import '../../controllers/service_controller.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_text_field.dart';
-import '../../widgets/pin_input.dart';
+import '../../widgets/transaction_pin_field.dart';
 
 class ElectricityScreen extends StatefulWidget {
   const ElectricityScreen({super.key});
@@ -100,9 +100,7 @@ class _ElectricityScreenState extends State<ElectricityScreen> {
               const SizedBox(height: 8),
               Wrap(spacing: 8, children: [500, 1000, 2000, 5000].map((a) => ActionChip(label: Text('₦$a'), onPressed: () => _amountCtrl.text = a.toString())).toList()),
               const SizedBox(height: 20),
-              const Text('Transaction PIN', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              PinInput(onChanged: (v) => _pin = v, onCompleted: (v) => _pin = v),
+              TransactionPinField(onPinReady: (v) => _pin = v),
               const SizedBox(height: 24),
               Obx(() => AppButton(label: 'Pay Electricity', isLoading: _svc.isLoading.value, onPressed: _buy)),
               const SizedBox(height: 32),

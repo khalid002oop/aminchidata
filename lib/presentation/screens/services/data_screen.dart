@@ -6,7 +6,7 @@ import '../../../core/utils/validators.dart';
 import '../../controllers/service_controller.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_text_field.dart';
-import '../../widgets/pin_input.dart';
+import '../../widgets/transaction_pin_field.dart';
 
 class DataScreen extends StatefulWidget {
   const DataScreen({super.key});
@@ -121,9 +121,7 @@ class _DataScreenState extends State<DataScreen> {
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   prefixIcon: const Icon(Icons.phone_outlined), validator: Validators.phone),
               const SizedBox(height: 20),
-              const Text('Transaction PIN', style: TextStyle(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 12),
-              PinInput(onChanged: (v) => _pin = v, onCompleted: (v) => _pin = v),
+              TransactionPinField(onPinReady: (v) => _pin = v),
               const SizedBox(height: 24),
               Obx(() => AppButton(label: 'Buy Data', isLoading: _svc.isLoading.value, onPressed: _buy)),
               const SizedBox(height: 32),

@@ -4,7 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../controllers/service_controller.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_text_field.dart';
-import '../../widgets/pin_input.dart';
+import '../../widgets/transaction_pin_field.dart';
 
 class CableScreen extends StatefulWidget {
   const CableScreen({super.key});
@@ -107,9 +107,7 @@ class _CableScreenState extends State<CableScreen> {
               ]);
             }),
             const SizedBox(height: 20),
-            const Text('Transaction PIN', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 12),
-            PinInput(onChanged: (v) => _pin = v, onCompleted: (v) => _pin = v),
+            TransactionPinField(onPinReady: (v) => _pin = v),
             const SizedBox(height: 24),
             Obx(() => AppButton(label: 'Subscribe', isLoading: _svc.isLoading.value, onPressed: _buy)),
             const SizedBox(height: 32),

@@ -3,6 +3,9 @@ import 'package:get/get.dart';
 import 'core/constants/app_colors.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/storage.dart';
+import 'core/utils/biometric_service.dart';
+import 'core/constants/api_constants.dart';
+import 'core/network/api_client.dart';
 import 'routes/app_pages.dart';
 import 'presentation/controllers/auth_controller.dart';
 
@@ -54,7 +57,8 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
     final scope = await Storage.getScope();
 
     if (token == null || token.isEmpty) {
-      Get.offAllNamed(AppRoutes.login);
+      // No token — try biometric login if available
+      await _tryBiometricLogin();
       return;
     }
 
@@ -68,10 +72,44 @@ class _SplashState extends State<_Splash> with SingleTickerProviderStateMixin {
         Get.offAllNamed(AppRoutes.verifyPin);
         break;
       case 'full':
+        // Valid full token — go home directly
         Get.offAllNamed(AppRoutes.home);
         break;
       default:
-        Get.offAllNamed(AppRoutes.login);
+        // Unknown scope or expired — try biometric then login
+        await _tryBiometricLogin();
+    }
+  }
+
+  Future<void> _tryBiometricLogin() async {
+    final ready = await BiometricService.isReadyForLogin();
+    if (!ready) {
+      Get.offAllNamed(AppRoutes.login);
+      return;
+    }
+
+    final ok = await BiometricService.authenticate(
+        reason: 'Use fingerprint to sign in to AminchiData');
+    if (!ok) {
+      Get.offAllNamed(AppRoutes.login);
+      return;
+    }
+
+    // Biometric success — reauth with stored PIN
+    final email = await Storage.getEmail();
+    final pin   = await Storage.getSecurePin();
+    if (email == null || pin == null) {
+      Get.offAllNamed(AppRoutes.login);
+      return;
+    }
+
+    final res = await ApiClient.post(
+        ApiConstants.reauth, {'email': email, 'pin': pin}, auth: false);
+    if (res.success) {
+      await Storage.saveToken(res.data['token'], scope: 'full');
+      Get.offAllNamed(AppRoutes.home);
+    } else {
+      Get.offAllNamed(AppRoutes.login);
     }
   }
 

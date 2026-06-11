@@ -10,6 +10,7 @@ class ApiConstants {
   static const String verifyPin      = '/auth/verify_pin.php';
   static const String forgotPassword = '/auth/forgot_password.php';
   static const String resetPassword  = '/auth/reset_password.php';
+  static const String reauth         = '/auth/reauth.php';
 
   // User
   static const String profile        = '/user/profile.php';
