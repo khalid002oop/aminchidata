@@ -28,28 +28,20 @@ jobs:
       - name: Get dependencies
         run: flutter pub get
 
-      - name: Build release APK (arm64 only)
-        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
+      - name: Build universal release APK (all architectures)
+        run: flutter build apk --release
 
       - name: Show APK size
         run: |
           ls -lh build/app/outputs/flutter-apk/
-          echo "APK size: $(du -sh build/app/outputs/flutter-apk/app-arm64-v8a-release.apk | cut -f1)"
+          echo "APK size: $(du -sh build/app/outputs/flutter-apk/app-release.apk | cut -f1)"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: aminchidata-release
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
-
-      - name: Deploy APK to server via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: 213.199.39.145
-          username: kh_fecb4ae67be9
-          password: ${{ secrets.SERVER_PASSWORD }}
-          script: echo "SSH OK"
 
       - name: Copy APK to server
         uses: appleboy/scp-action@v0.1.7
@@ -57,7 +49,7 @@ jobs:
           host: 213.199.39.145
           username: kh_fecb4ae67be9
           password: ${{ secrets.SERVER_PASSWORD }}
-          source: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          source: build/app/outputs/flutter-apk/app-release.apk
           target: /var/www/users/fecb4ae67be94c94/aminchidata.com.ng/public_html/
           strip_components: 4
           overwrite: true
@@ -70,6 +62,6 @@ jobs:
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
             PUB=/var/www/users/fecb4ae67be94c94/aminchidata.com.ng/public_html
-            mv -f $PUB/app-arm64-v8a-release.apk $PUB/aminchidata.apk
+            mv -f $PUB/app-release.apk $PUB/aminchidata.apk
             ls -lh $PUB/aminchidata.apk
-            echo "APK is LIVE at https://aminchidata.com.ng/aminchidata.apk"
+            echo "SUCCESS — APK live at https://aminchidata.com.ng/aminchidata.apk"
