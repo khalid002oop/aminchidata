@@ -2,11 +2,58 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/helpers.dart';
+import '../../../core/utils/storage.dart';
+import '../../../core/utils/biometric_service.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/home_controller.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _biometricSupported = false;
+  bool _biometricEnabled  = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometricState();
+  }
+
+  Future<void> _loadBiometricState() async {
+    final supported = await BiometricService.isSupported();
+    final enrolled  = await BiometricService.hasEnrolled();
+    final enabled   = await Storage.isBiometricEnabled();
+    if (mounted) {
+      setState(() {
+        _biometricSupported = supported && enrolled;
+        _biometricEnabled   = enabled;
+      });
+    }
+  }
+
+  Future<void> _toggleBiometric(bool value, AuthController auth) async {
+    if (value) {
+      // Need a PIN stored — check first
+      final pin = await Storage.getSecurePin();
+      if (pin == null || pin.isEmpty) {
+        Get.snackbar(
+          'PIN Required',
+          'Log out and log back in to link your PIN with fingerprint.',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 4),
+        );
+        return;
+      }
+    }
+    await auth.toggleBiometric(value);
+    final enabled = await Storage.isBiometricEnabled();
+    if (mounted) setState(() => _biometricEnabled = enabled);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +101,14 @@ class ProfileScreen extends StatelessWidget {
           // Menu
           _section('Settings', [
             _menuItem(Icons.lock_outline, 'Change PIN', () => Get.toNamed('/change-pin')),
+            if (_biometricSupported)
+              _switchItem(
+                Icons.fingerprint,
+                'Fingerprint Login',
+                'Use fingerprint to log in and authorize transactions',
+                _biometricEnabled,
+                (v) => _toggleBiometric(v, auth),
+              ),
             _menuItem(Icons.people_outline, 'Referrals', () => Get.toNamed('/referrals')),
             _menuItem(Icons.history, 'Transaction History', () => Get.toNamed('/history')),
             _menuItem(Icons.account_balance_outlined, 'Virtual Account', () => Get.toNamed('/virtual-account')),
@@ -102,11 +157,33 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _infoRow(IconData icon, String label, String value) {
-    return ListTile(leading: Icon(icon, color: AppColors.primary, size: 20), title: Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)), subtitle: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)));
+    return ListTile(
+      leading: Icon(icon, color: AppColors.primary, size: 20),
+      title: Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+      subtitle: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+    );
   }
 
   Widget _menuItem(IconData icon, String label, VoidCallback onTap) {
-    return ListTile(leading: Icon(icon, color: AppColors.primary, size: 20), title: Text(label), trailing: const Icon(Icons.chevron_right, color: Colors.grey), onTap: onTap);
+    return ListTile(
+      leading: Icon(icon, color: AppColors.primary, size: 20),
+      title: Text(label),
+      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      onTap: onTap,
+    );
+  }
+
+  Widget _switchItem(IconData icon, String label, String subtitle, bool value, ValueChanged<bool> onChanged) {
+    return ListTile(
+      leading: Icon(icon, color: AppColors.primary, size: 20),
+      title: Text(label),
+      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+      trailing: Switch(
+        value: value,
+        onChanged: onChanged,
+        activeThumbColor: AppColors.primary,
+      ),
+    );
   }
 
   void _confirmLogout(BuildContext context, AuthController auth) {
