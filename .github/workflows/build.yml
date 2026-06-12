@@ -58,16 +58,18 @@ jobs:
           username: kh_fecb4ae67be9
           password: ${{ secrets.SERVER_PASSWORD }}
           source: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-          target: /var/www/users/fecb4ae67be94c94/aminchidata.com.ng/public_html/aminchidata.apk
+          target: /var/www/users/fecb4ae67be94c94/aminchidata.com.ng/public_html/
           strip_components: 4
           overwrite: true
 
-      - name: Verify APK on server
+      - name: Rename and verify APK on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: 213.199.39.145
           username: kh_fecb4ae67be9
           password: ${{ secrets.SERVER_PASSWORD }}
           script: |
-            ls -lh /var/www/users/fecb4ae67be94c94/aminchidata.com.ng/public_html/aminchidata.apk
+            PUB=/var/www/users/fecb4ae67be94c94/aminchidata.com.ng/public_html
+            mv -f $PUB/app-arm64-v8a-release.apk $PUB/aminchidata.apk
+            ls -lh $PUB/aminchidata.apk
             echo "APK is LIVE at https://aminchidata.com.ng/aminchidata.apk"
